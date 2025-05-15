@@ -6,6 +6,9 @@
 #include <functional>
 
 #include "engine.hpp"
+#include "vec3.hpp"
+
+const float INF = 1e10;
 
 GameEngine::GameEngine() {};
 
@@ -52,11 +55,15 @@ void GameEngine::run() {
 	int isrun = 1;
 	SDL_Event event;
 
-	std::vector<float> camera = {0., 0., 0.};
-	static std::vector<std::vector<float>> center = {
-		{0,-1,3,1},
-		{2,0,4,1},
-		{-2,0,4,1}
+	vec3 camera(0., 0., 0.);
+	struct sphere {
+		vec3 center;
+		float radius;
+	};
+	std::vector<sphere> spheres = {
+		{vec3(0,-1,3),1},
+		{vec3(2,0,4),1},
+		{vec3(-2,0,4),1}
 	};
 
 	while(isrun) {
@@ -70,22 +77,22 @@ void GameEngine::run() {
                 std::cout << "Key pressed: " << SDL_GetKeyName(event.key.keysym.sym) << std::endl;
 				switch(event.key.keysym.sym) {
 					case SDLK_s:
-						camera[1] -= 0.2;
+						camera.sety(camera.y() - 0.2f);
 						break;
 					case SDLK_w:
-						camera[1] += 0.2;
+						camera.sety(camera.y() + 0.2f);
 						break;
 					case SDLK_a:
-						camera[0] -= 0.2;
+						camera.setx(camera.x() - 0.2f);
 						break;
 					case SDLK_d:
-						camera[0] += 0.2;
+						camera.setx(camera.x() + 0.2f);
 						break;
 					case SDLK_MINUS:
-						camera[2] -= 0.2;
+						camera.setz(camera.z() - 0.2f);
 						break;
 					case SDLK_PLUS:
-						camera[2] += 0.2;
+						camera.setz(camera.z() + 0.2f);
 						break;
 					default:
 						break;
@@ -99,16 +106,16 @@ void GameEngine::run() {
 
 		for(int x = 0;  x < GE_WIDTH; x++) {
 			for(int y = 0; y < GE_HEIGHT; y++) {
-				std::vector<float> D = {
-					(-GE_WIDTH/2. + x)/GE_WIDTH, 
-					-(-GE_HEIGHT/2. + y)/GE_HEIGHT,
+				vec3 D(
+					(-GE_WIDTH/2.f + x)/GE_WIDTH, 
+					-(-GE_HEIGHT/2.f + y)/GE_HEIGHT,
 					1
-				};
+				);
 
-				std::function<float(std::vector<float>,std::vector<float>,float&)> deter = [](std::vector<float> D, std::vector<float> sphere, float& t) {
-					float a = D[0]*D[0] + D[1]*D[1] + D[2]*D[2];
-					float b = 2*D[0]*sphere[0] + 2*D[1]*sphere[1] + 2*D[2]*sphere[2];
-					float c = sphere[0]*sphere[0] + sphere[1]*sphere[1] + sphere[2]*sphere[2] - sphere[3]*sphere[3];
+				std::function<float(vec3,sphere,float&)> deter = [](vec3 D, sphere s, float& t) {
+					float a = D.x()*D.x() + D.y()*D.y() + D.z()*D.z();
+					float b = 2*D.x()*s.center.x() + 2*D.y()*s.center.y() + 2*D.z()*s.center.z();
+					float c = s.center.x()*s.center.x() + s.center.y()*s.center.y() + s.center.z()*s.center.z() - s.radius*s.radius;
 
 					float d = b*b - 4*a*c;
 					if(d < 0.) return false;
@@ -118,23 +125,28 @@ void GameEngine::run() {
 				};
 
 
-				float t = 0.;
+				float t;
+				float min_t = INF;
 
-				std::vector<std::vector<float>> OC = center;
+				std::vector<sphere> OC = spheres;
 
-				for(std::vector<float>& oc : OC) {
-					oc[0] -= camera[0];
-					oc[1] -= camera[1];
-					oc[2] -= camera[2];
+				for(sphere& oc : OC) {
+					oc.center = oc.center - camera;
 				}
 
 				SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-				if(deter(D,OC[0],t))
+				if(deter(D,OC[0],t) && t < min_t) {
 					SDL_SetRenderDrawColor(renderer, 255/2, 0, 0, 255);
-				if(deter(D,OC[1],t))
+					min_t = t;
+				}
+				if(deter(D,OC[1],t) && t < min_t) {
 					SDL_SetRenderDrawColor(renderer, 0, 0, 255/2, 255);
-				if(deter(D,OC[2],t))
+					min_t = t;
+				}
+				if(deter(D,OC[2],t) && t < min_t) {
 					SDL_SetRenderDrawColor(renderer, 0, 255/2, 0, 255);
+					min_t = t;
+				}
 				
 				this->drawPixel(x,y);
 			}
@@ -143,5 +155,6 @@ void GameEngine::run() {
 		SDL_RenderPresent(renderer);
 		std::clog << "\rFPS: " << 1000. / (SDL_GetTicks() - startTick) << std::flush;
 		//SDL_Delay(1000 / 50);
+		//isrun=false;
 	}
 }

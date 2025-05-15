@@ -1,9 +1,7 @@
-#ifndef GAME_ENGINE_H
-#define GAME_ENGINE_H
+#ifndef GAME_ENGINE_HPP
+#define GAME_ENGINE_HPP
 
 #include <SDL2/SDL.h>
-#include <tuple>
-#include <utility>
 
 class GameEngine {
 public:
@@ -16,8 +14,8 @@ public:
 private:
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
-	const int GE_HEIGHT = 480;
-	const int GE_WIDTH  = 640;
+	const int GE_HEIGHT = 200;
+	const int GE_WIDTH  = 200;
 };
 
 #endif
