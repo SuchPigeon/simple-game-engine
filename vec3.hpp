@@ -14,6 +14,9 @@ public:
 	float length() const;
 	vec3 normal();
 	float dot(vec3);
+	inline vec3 operator-() const {
+		return vec3(this->x(), this->y(), this->z());
+	}
 	inline float& operator[](int ind) {
 		return v[ind];
 	}

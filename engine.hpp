@@ -14,8 +14,8 @@ public:
 private:
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
-	const int GE_HEIGHT = 220;
-	const int GE_WIDTH  = 220;
+	const int GE_HEIGHT = 600;
+	const int GE_WIDTH  = 600;
 };
 
 #endif

@@ -61,12 +61,13 @@ void GameEngine::run() {
 		vec3 center;
 		color3 color;
 		float radius;
+		float specular;
 	};
 	std::vector<sphere> spheres = {
-		{vec3(0,-1,3),color3(255,0,0),1},
-		{vec3(2,0,4),color3(0,0,255),1},
-		{vec3(-2,0,4),color3(0,255,0),1},
-		{vec3(0,-5001,0),color3(255,255,0),5000}
+		{vec3(0,-1,3),color3(255,0,0),1,500},
+		{vec3(2,0,4),color3(0,0,255),1,500},
+		{vec3(-2,0,4),color3(0,255,0),1,10},
+		{vec3(0,-5001,0),color3(255,255,0),5000,1000}
 	};
 
 	while(isrun) {
@@ -112,7 +113,7 @@ void GameEngine::run() {
 		for(int x = 0;  x < GE_WIDTH; x+=DELIM) {
 			for(int y = 0; y < GE_HEIGHT; y+=DELIM) {
 				vec3 D(
-					-(GE_WIDTH/2.f - x)/GE_WIDTH*1, 
+					(GE_WIDTH/2.f - x)/GE_WIDTH*1, 
 					-(GE_HEIGHT/2.f - y)/GE_HEIGHT*1,
 					-1
 				);
@@ -122,13 +123,13 @@ void GameEngine::run() {
 					SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 					float t_min = INF;
 					color3 closest_color = color3(255,255,255);
-					point3 closest_center;
+					sphere* closest_sphere = nullptr;
 
 					for(sphere& oc : OC) {
 						oc.center = oc.center - camera;
 					}
 
-					for(const sphere s : OC) {
+					for(sphere s : OC) {
 						float a = D.x()*D.x() + D.y()*D.y() + D.z()*D.z();
 						float b = 2*D.x()*s.center.x() + 2*D.y()*s.center.y() + 2*D.z()*s.center.z();
 						float c = s.center.x()*s.center.x() + s.center.y()*s.center.y() + s.center.z()*s.center.z() - s.radius*s.radius;
@@ -141,27 +142,51 @@ void GameEngine::run() {
 
 						if(t0 >= 1. && t0 < t_min) {
 							closest_color = s.color;
-							closest_center = s.center;
+							closest_sphere = &s;
 							t_min = t0;
 						}
 						if(t1 >= 1. && t1 < t_min) {
 							closest_color = s.color;
-							closest_center = s.center;
+							closest_sphere = &s;
 							t_min = t1;
 						}
 					}
 
-					point3 P = camera + t_min * D;
-					point3 N = P - closest_center;
+					if(closest_sphere == nullptr)
+						return closest_color;
+
+					// Lighting
+					vec3 cross_point = camera + t_min * D;
+					vec3 sphere_normal = cross_point - closest_sphere->center;
+					// Ambient lighting
 					float light_level = 0.2f;
-
-					vec3 L = vec3(2, 1, 0) - P;
-					light_level += 0.6f * N.dot(L) / (N.length() * L.length());
-
-					/*
-					L = vec3(1, 4, 4);
-					light_level += 0.2f * N.dot(L) / (N.length() + L.length());
-					*/
+					// Point lighting
+					{
+						float light_intensity = 0.6f;
+						vec3 light = vec3(2, 1, 0) - cross_point;
+						float dot_val = sphere_normal.dot(light);
+						if(dot_val > 0.f)
+							light_level += light_intensity * dot_val / (sphere_normal.length() * light.length());
+						if(closest_sphere->specular != -1.f) {
+							vec3 reflect = 2 * dot_val * sphere_normal - light;
+							dot_val = reflect.dot(-D);
+							if(dot_val > 0.f)
+								light_level += light_intensity * pow(dot_val / (reflect.length() * (-D).length()) , closest_sphere->specular);
+						}
+					}
+					{
+						float light_intensity = 0.2f;
+						vec3 light = vec3(1,4,4);
+						float dot_val = sphere_normal.dot(light);
+						if(dot_val > 0.f)
+							light_level += light_level * dot_val / (sphere_normal.length() * light.length());
+						if(closest_sphere->specular != -1.f) {
+							vec3 reflect = 2 * dot_val * sphere_normal - light;
+							dot_val = reflect.dot(-D);
+							if(dot_val > 0.f)
+								light_level += light_intensity * pow(dot_val / (reflect.length() * (-D).length()), closest_sphere->specular);
+						}
+					}
 
 					closest_color = light_level * closest_color;
 
